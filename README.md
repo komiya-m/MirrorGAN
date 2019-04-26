@@ -21,15 +21,13 @@ Other
 ## Using
 - cloneします
 
-`$ git clone git@github.com:komiya-m/MirrorGAN.git`
+  `$ git clone git@github.com:komiya-m/MirrorGAN.git`
 
-`$ cd MirrorGAN`
+  `$ cd MirrorGAN`
 
 - データをダウンロードしてください
 
-[AttnGAN ](https://github.com/taoxugit/AttnGAN)
-
-こちらのDataの欄を参考にbirdsの前処理されたメタデータとデータセットをダウンロードしてください。
+[AttnGAN ](https://github.com/taoxugit/AttnGAN) こちらのDataの欄を参考にbirdsの前処理されたメタデータとデータセットをダウンロードしてください。
 
 ディレクトリ構造参考
 
@@ -39,11 +37,11 @@ Other
 
 　config.pyで設定が変更できます。TREE.BRANCH_NUM = 3 にしてください。その後下記を実行。
   
-`$ python pretrain_STREAM.py `
+  `$ python pretrain_STREAM.py `
 
--GANのトレーニング。TREE.BRANCH_NUM = 1から始めてください。
+- GANのトレーニング。TREE.BRANCH_NUM = 1から始めてください。
 
-`$ python train.py `
+  `$ python train.py `
 
 ## Reference
 - [MirrorGAN: Learning Text-to-image Generation by Redescription](https://arxiv.org/abs/1903.05854)
