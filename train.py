@@ -64,6 +64,7 @@ def main():
     test_noise = deepcopy(z_code[:20])
     test_cap_pd = deepcopy(captions_ar_prezeropad)
     test_cap = deepcopy(captions_ar[:20])
+    test_mask = deepcopy(mask[:20])
     #学習の開始
     print("batch_size: {}  step_epoch : {} srong_step_epoch {}".format(
         batch_size, step_epoch, wrong_step_epoch))
@@ -159,12 +160,15 @@ def main():
 
         #画像の保存
         if epoch % 1 == 0:
-            sample_images(epoch, test_noise, test_cap_pd, G_model)
+            sample_images(epoch, test_noise, test_cap_pd, test_mask, G_model)
 
 
-def sample_images(epoch, noise, cap_pd, G_model):
+def sample_images(epoch, noise, cap_pd, mask, G_model):
     r, c = 5, 4
-    gen_imgs = G_model.predict([cap_pd, noise])
+    if cfg.TREE.BRANCH_NUM == 1:
+        gen_imgs = G_model.predict([cap_pd, noise])
+    else:
+        gen_imgs = G_model.predict([cap_pd, noise, mask])
     # Rescale images
     gen_imgs = (gen_imgs * 127.5 + 127.5).astype("int")
     fig, axs = plt.subplots(r, c)
