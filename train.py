@@ -161,9 +161,9 @@ def main():
             .format(G_loss, G_des_loss, G_enc_loss))
 
         if epoch % 4 == 0:
-            G_save_path = "model/G_epoch{}.h5".format(epoch_count)
+            G_save_path = "model/G_epoch{}.h5".format(epoch)
             G_model.save_weights(G_save_path)
-            D_save_path = "model/D_epoch{}.h5".format(epoch_count)
+            D_save_path = "model/D_epoch{}.h5".format(epoch)
             D_model.save_weights(D_save_path)
 
         #画像の保存
