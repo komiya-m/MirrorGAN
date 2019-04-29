@@ -113,9 +113,9 @@ def RNN_ENCODER(emb_size,
             __rec_units[rec_unit](
                 hidden_size, return_sequences=True, return_state=True))(drop)
     sent_emb = Concatenate()([forward_h, backward_h])
-    c_code = CA_NET(sent_emb, c_dim)
+    c_code, eps_input = CA_NET(sent_emb, c_dim)
     RNN_model = Model(
-        cap_input, [words_emb, sent_emb, c_code], name="RNN_ENCODER")
+        [cap_input, eps_input], [words_emb, sent_emb, c_code],name="RNN_ENCODER")
     return RNN_model, words_emb, sent_emb, c_code
 
 
@@ -135,12 +135,7 @@ def CNN_ENCODER_RNN_DECODER(emb_size, hidden_size, vocab_size, rec_unit='gru'):
     }
     assert rec_unit in __rec_units, 'Specified recurrent unit is not available'
 
-    pic_input = Input(
-        shape=(
-            None,
-            None,
-            3,
-        ), name="cr_pic_input")
+    pic_input = Input(shape=(None,None,3,), name="cr_pic_input")
     upsamp = Lambda(lambda image: ktf.image.resize_images(image, (299, 299)))(
         pic_input)
     inc = InceptionV3(include_top=False, pooling='avg')
@@ -189,10 +184,10 @@ class GlobalAttentionGeneral(Layer):
         """
         target: batch x  ih x iw (queryL=ihxiw) x idf
         source: batch x sourceL(seq_len) x idf
-        mask: batch x sourceL
+        mask: batch x sourceL 
+            -inf or 0 が入っている
         """
         target, source, mask = input_tensor
-        batch_size = cfg.TRAIN.BATCH_SIZE
         idf = self.output_dim
         ih = self.ih
         iw = self.iw
@@ -200,41 +195,25 @@ class GlobalAttentionGeneral(Layer):
         sourceL = self.sourceL
 
         # --> batch x queryL x idf
-        target = K.reshape(target, (batch_size, queryL, idf))
+        target = K.reshape(target, (-1, queryL, idf))
         # --> batch x idf x sourceL
         sourceT = ktf.transpose(source, perm=[0, 2, 1])
         # Get attention
         # (batch x queryL x idf)(batch x idf x sourceL)
         # -->batch x queryL x sourceL
         attn = ktf.matmul(target, sourceT)
-        # --> batch*queryL x sourceL
-        attn = K.reshape(attn, (batch_size * queryL, sourceL))
-
-        mask = K.switch(self.use_mask,
-                lambda: K.repeat_elements(
-                mask, rep=queryL, axis=0),
-                lambda: 0.0)
         addmask = K.switch(
-            self.use_mask, lambda: ktf.where(
-                ktf.cast(mask, ktf.bool),
-                ktf.constant(-float('inf'), shape=(batch_size*queryL, sourceL), dtype=ktf.float32),
-                mask), lambda: 0.0)
-        # batch_size x sourceL --> batch_size*queryL x sourceL
+            self.use_mask,
+            lambda: K.repeat_elements(
+                K.reshape(mask, (-1, 1, sourceL)), rep=queryL, axis=1),
+            lambda: 0.0)
         attn = attn + addmask
         attn = K.softmax(attn)
-        # --> batch x queryL x sourceL
-        attn = K.reshape(attn, (batch_size, queryL, sourceL))
-        # --> batch x sourceL x queryL
-        attn = ktf.transpose(attn, perm=[0, 2, 1])
-        # (batch x idf x sourceL)(batch x sourceL x queryL)
-        # --> batch x idf x queryL
-        weightedContext = ktf.matmul(sourceT, attn)
-        weightedContext = K.reshape(weightedContext, (batch_size, idf, ih, iw))
-        #batch_size,  ih, iw, idf
-        weightedContext = ktf.transpose(weightedContext, perm=[0, 2, 3, 1])
-        attn = K.reshape(attn, (batch_size, sourceL, ih, iw))  #計算ではこの後未使用
-        #batch_size,  ih, iw, isourceL
-        attn = ktf.transpose(attn, perm=[0, 2, 3, 1])
+        # (batch x queryL x sourceL)(batch x sourceL x idf)
+        # --> batch x queryL x idf
+        weightedContext = ktf.matmul(attn, source)
+        weightedContext = K.reshape(weightedContext, (-1, ih, iw, idf))
+        attn = K.reshape(attn, (-1, ih, iw, sourceL))  #計算ではこの後未使用
         return [weightedContext, attn]
 
     def compute_output_shape(self, input_shape):
@@ -243,25 +222,20 @@ class GlobalAttentionGeneral(Layer):
 
 # ############## G networks ###################
 def CA_NET(sent_emb, c_dim):
-    # some code is modified from vae examples
-    # (https://github.com/pytorch/examples/blob/master/vae/main.py)
+    eps_input = Input(shape=(c_dim,), name='eps_input')
     z = Dense(c_dim * 4)(sent_emb)
     z = GLU()(z)
-    c_code = Lambda(canet_function, name="canet_function")(z)
-    return c_code
+    mu = Lambda(lambda x: x[:, :c_dim], output_shape=(c_dim,))(z)
+    logvar = Lambda(lambda x: x[:, c_dim:], output_shape=(c_dim, ))(z)
+    c_code = Lambda(
+        canet_function, name="canet_function",
+        output_shape=(c_dim, ))([mu, logvar, eps_input])
+    return c_code, eps_input
 
 
-def canet_function(x):
-    c_dim = cfg.GAN.CONDITION_DIM
-    batch_size = cfg.TRAIN.BATCH_SIZE
-
-    mu = x[:, :c_dim]
-    logvar = x[:, c_dim:]
+def canet_function(input_tensor):
+    mu, logvar, eps = input_tensor
     std = K.exp(logvar * 0.5)
-    eps = ktf.random.normal(shape=(
-        batch_size,
-        c_dim,
-    ))
     c_code = eps * std + mu
     return c_code
 
@@ -273,13 +247,8 @@ def INIT_STAGE_G(c_code, ngf):
     :return: batch x  64 x 64 x ngf/16
     """
     z_dim = cfg.GAN.Z_DIM
-    batch_size = cfg.TRAIN.BATCH_SIZE
 
-    z_code_input = Input(
-        batch_shape=(
-            batch_size,
-            z_dim,
-        ), name="z_code_input_initG")
+    z_code_input = Input(shape=(z_dim,), name="z_code_input_initG")
 
     c_z_code = Concatenate()([z_code_input, c_code])
     # state size 4 x 4 x ngf
@@ -406,8 +375,6 @@ def D_GET_LOGITS(ndf, nef, h_code, sent_emb):
     h_c_code = Concatenate()([h_code, s_code])
     #state size in_size x in_size x ngf
     h_c_code = Block3x3_leakRelu(ndf * 8)(h_c_code)
-    #batch方向にコンカット
-    #concat_code = Concatenate(axis=0)([h_code, h_c_code])
     conv2d_lg = Conv2D(1, kernel_size=4, strides=4)
     h_logits = conv2d_lg(h_code)
     h_c_logits = conv2d_lg(h_c_code)

@@ -61,6 +61,8 @@ class DataGenerator(object):
         #ノイズ
         z_code = np.random.normal(0, 1,
                                   (self.batchsize, cfg.GAN.Z_DIM)).astype("f")
+        eps_code = np.random.normal(
+            0, 1, (self.batchsize, cfg.GAN.CONDITION_DIM)).astype("f")
 
         #gan_label
         real_label = np.ones((self.batchsize, 1), dtype="i4")
@@ -80,9 +82,10 @@ class DataGenerator(object):
             image_list += [img128_ar]
         if cfg.TREE.BRANCH_NUM > 2:
             image_list += [img256_ar]
-        
+
         return image_list, captions_ar, captions_ar_prezeropad, \
-                    z_code, mask, keys_list, captions_label, real_label, fake_label
+                    z_code, eps_code, mask, keys_list, captions_label, \
+                    real_label, fake_label
 
 
 class DataGenerator_encode(object):
@@ -126,4 +129,3 @@ class DataGenerator_encode(object):
                 ind = y_captions_ar[j, i, 0].astype("int")
                 y[j, i, ind] = 1
         return [img256_ar, captions_ar], y
-

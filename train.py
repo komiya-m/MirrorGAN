@@ -58,13 +58,17 @@ def main():
     wrong_step_epoch = int(step_epoch / wrong_step)
 
     image_list, captions_ar, captions_ar_prezeropad, \
-    z_code, mask, keys_list, captions_label, real_label, fake_label = next(traingenerator)
+        z_code, eps_code, mask, keys_list, captions_label, \
+            real_label, fake_label = next(traingenerator)
     traingenerator.count = 0
     #imageプロット用
     test_noise = deepcopy(z_code[:20])
-    test_cap_pd = deepcopy(captions_ar_prezeropad)
+    test_eps = deepcopy(eps_code[:20])
+    test_cap_pd = deepcopy(captions_ar_prezeropad[:20])
     test_cap = deepcopy(captions_ar[:20])
     test_mask = deepcopy(mask[:20])
+    test_mask = np.where(test_mask == 1, -float("inf"), 0)
+
     #学習の開始
     print("batch_size: {}  step_epoch : {} srong_step_epoch {}".format(
         batch_size, step_epoch, wrong_step_epoch))
@@ -83,7 +87,10 @@ def main():
         for batch in tqdm(range(step_epoch)):
 
             image_list, captions_ar, captions_ar_prezeropad, \
-                z_code, mask, keys_list, captions_label, real_label, fake_label = next(traingenerator)
+                z_code, eps_code, mask, keys_list, captions_label, \
+                    real_label, fake_label = next(traingenerator)
+
+            mask = np.where(mask == 1, -float("inf"), 0)
 
             if cfg.TREE.BRANCH_NUM == 1:
                 real_image = image_list[0]
@@ -93,10 +100,11 @@ def main():
                 real_image = image_list[2]
             #Dの学習
             if cfg.TREE.BRANCH_NUM == 1:
-                fake_image = G_model.predict([captions_ar_prezeropad, z_code])
+                fake_image = G_model.predict(
+                    [captions_ar_prezeropad, eps_code, z_code])
             else:  # 2 or 3
                 fake_image = G_model.predict(
-                    [captions_ar_prezeropad, z_code, mask])
+                    [captions_ar_prezeropad, eps_code, z_code, mask])
 
             if batch % 1 == 0:
                 histDr = D_model.train_on_batch(
@@ -124,12 +132,12 @@ def main():
             #Gの学習
             if cfg.TREE.BRANCH_NUM == 1:
                 histGRD = GRD_model.train_on_batch(
-                    [captions_ar_prezeropad, z_code, captions_ar],
+                    [captions_ar_prezeropad, eps_code, z_code, captions_ar],
                     [real_label, real_label, captions_label],
                 )
             else:  # 2 or 3
                 histGRD = GRD_model.train_on_batch(
-                    [captions_ar_prezeropad, z_code, mask, captions_ar],
+                    [captions_ar_prezeropad, eps_code, z_code, mask, captions_ar],
                     [real_label, real_label, captions_label],
                 )
             total_G_loss += histGRD[0]
@@ -160,15 +168,15 @@ def main():
 
         #画像の保存
         if epoch % 1 == 0:
-            sample_images(epoch, test_noise, test_cap_pd, test_mask, G_model)
+            sample_images(epoch, test_noise, test_eps, test_cap_pd, test_mask, G_model)
 
 
-def sample_images(epoch, noise, cap_pd, mask, G_model):
+def sample_images(epoch, noise, eps, cap_pd, mask, G_model):
     r, c = 5, 4
     if cfg.TREE.BRANCH_NUM == 1:
-        gen_imgs = G_model.predict([cap_pd, noise])
+        gen_imgs = G_model.predict([cap_pd, eps, noise])
     else:
-        gen_imgs = G_model.predict([cap_pd, noise, mask])
+        gen_imgs = G_model.predict([cap_pd, eps, noise, mask])
     # Rescale images
     gen_imgs = (gen_imgs * 127.5 + 127.5).astype("int")
     fig, axs = plt.subplots(r, c)

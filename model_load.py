@@ -34,9 +34,11 @@ def model_create(dataset):
     CR_model.trainable = False
 
     RNN_model, words_emb, sent_emb, c_code = \
-        RNN_ENCODER(emb_size, hidden_size,vocab_size)
+        RNN_ENCODER(emb_size, hidden_size,vocab_size, rec_unit=cfg.RNN_TYPE)
     netGs_out, out_image_block, attm, atts, z_code_input, mask_input = \
         G_DCGAN(sent_emb, words_emb, c_code)
+
+    cap_input, eps_input = RNN_model.get_input_at(0)
 
     if cfg.TREE.BRANCH_NUM == 1:
         D_h_logits, D_hc_logits, D_pic_input = D_NET64(sent_emb)
@@ -45,33 +47,36 @@ def model_create(dataset):
     if cfg.TREE.BRANCH_NUM == 3:
         D_h_logits, D_hc_logits, D_pic_input = D_NET256(sent_emb)
     #Dの学習用
-    D_model = Model(
-        [D_pic_input, RNN_model.input], [D_h_logits, D_hc_logits],name="Discriminator")
+    D_model = Model([D_pic_input, cap_input],
+                    [D_h_logits, D_hc_logits],
+                    name="Discriminator")
     #Dの重みロード
     if not cfg.TRAIN.NET_D == "":
         D_model.load_weights(cfg.TRAIN.NET_D)
 
     #G (Dの学習用のアウトプットに利用)
     if cfg.TREE.BRANCH_NUM > 0:
-        init_G_model = Model([RNN_model.input, z_code_input],
-                            netGs_out[0],
-                            name="init_G")
+        init_G_model = Model([cap_input, eps_input, z_code_input],
+                             netGs_out[0],
+                             name="init_G")
         G_output = init_G_model.output
         if not cfg.TRAIN.INIT_NET_G == "":
             init_G_model.load_weights(cfg.TRAIN.INIT_NET_G, by_name=True)
 
     if cfg.TREE.BRANCH_NUM > 1:
-        next_G_model128 = Model([RNN_model.input, z_code_input, mask_input],
-                                netGs_out[1],
-                                name="next_G128")
+        next_G_model128 = Model(
+            [cap_input, eps_input, z_code_input, mask_input],
+            netGs_out[1],
+            name="next_G128")
         G_output = next_G_model128.output
         if not cfg.TRAIN.NEXT128_NET_G == "":
             next_G_model128.load_weights(cfg.TRAIN.NEXT128_NET_G, by_name=True)
 
     if cfg.TREE.BRANCH_NUM > 2:
-        next_G_model256 = Model([RNN_model.input, z_code_input, mask_input],
-                                netGs_out[2],
-                                name="next_G256")
+        next_G_model256 = Model(
+            [cap_input, eps_input, z_code_input, mask_input],
+            netGs_out[2],
+            name="next_G256")
         G_output = next_G_model256.output
         if not cfg.TRAIN.NEXT256_NET_G == "":
             next_G_model256.load_weights(cfg.TRAIN.NEXT256_NET_G, by_name=True)
