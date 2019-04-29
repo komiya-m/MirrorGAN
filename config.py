@@ -12,7 +12,9 @@ cfg = __C
 # Dataset name: flowers, birds
 __C.DATASET_NAME = 'birds'
 __C.CONFIG_NAME = ''
-__C.DATA_DIR = '../AttnGAN/data/birds' #########変えること！！！！！！
+__C.DATA_DIR = 'data/birds'
+
+__C.RNN_TYPE = 'GRU'  # 'LSTM'
 
 __C.TREE = edict()
 __C.TREE.BRANCH_NUM = 2
