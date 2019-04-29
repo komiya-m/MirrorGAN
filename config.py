@@ -17,7 +17,7 @@ __C.DATA_DIR = 'data/birds'
 __C.RNN_TYPE = 'gru'  # 'lstm'
 
 __C.TREE = edict()
-__C.TREE.BRANCH_NUM = 2
+__C.TREE.BRANCH_NUM = 1
 __C.TREE.BASE_SIZE = 64
 
 # Training options
