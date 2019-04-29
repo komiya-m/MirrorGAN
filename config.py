@@ -14,7 +14,7 @@ __C.DATASET_NAME = 'birds'
 __C.CONFIG_NAME = ''
 __C.DATA_DIR = 'data/birds'
 
-__C.RNN_TYPE = 'GRU'  # 'LSTM'
+__C.RNN_TYPE = 'gru'  # 'lstm'
 
 __C.TREE = edict()
 __C.TREE.BRANCH_NUM = 2
