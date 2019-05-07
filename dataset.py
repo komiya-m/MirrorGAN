@@ -17,13 +17,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 import numpy.random as random
-"""
-if sys.version_info[0] == 2:
-    import cPickle as pickle
-else:
-    import pickle
-"""
-import pickle  #修正
+import pickle
 
 
 def get_imgs(img_path, imsize, bbox=None, transform=None, normalize=None):
@@ -54,7 +48,8 @@ def get_imgs(img_path, imsize, bbox=None, transform=None, normalize=None):
             else:
                 re_img = img
             re_img = normalize(re_img)
-            ##追加numpyへの変換 チャンネルを最後に移動
+            ##Move channel last
+            ##convert to numpy
             re_img = torch.Tensor.numpy(re_img).transpose(1, 2, 0)
             ret.append(re_img)
 
@@ -293,5 +288,3 @@ class TextDataset(data.Dataset):
 
     def __len__(self):
         return len(self.filenames)
-
-

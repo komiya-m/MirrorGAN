@@ -57,7 +57,7 @@ def conv3x3(out_planes):
 
 
 def upBlock(out_planes):
-    # サイズを2倍にアップスケール
+    #x2 upsampling
     block = Sequential([
         UpSampling2D(size=2),
         conv3x3(out_planes * 2),
@@ -68,7 +68,6 @@ def upBlock(out_planes):
 
 
 def Block3x3_relu(out_planes):
-    #サイズは変わらない
     block = Sequential(
         [conv3x3(out_planes * 2),
          BatchNormalization(epsilon=1e-05),
@@ -96,7 +95,7 @@ def RNN_ENCODER(emb_size,
     :param embed_size: size of word embeddings
     :param hidden_size: size of hidden state of the recurrent unit
     :param vocab_size: size of the vocabulary (output of the network)
-    :param rec_unit: type of recurrent unit (default=lstm)
+    :param rec_unit: type of recurrent unit (default=gru)
     """
     __rec_units = {'gru': GRU, 'lstm': LSTM}
     assert rec_unit in __rec_units, 'Specified recurrent unit is not available'
@@ -157,9 +156,8 @@ def CNN_ENCODER_RNN_DECODER(emb_size, hidden_size, vocab_size, rec_unit='gru'):
     return model
 
 
-################Global Attntion################
+################ Attntion ################
 def ATT_NET(target, context, mask, use_mask):
-    #チャンネル合わせ
     idf = int(target.shape[-1])
     source = Conv1D(idf, kernel_size=1)(context)
     weightedContext, attn = GlobalAttentionGeneral(use_mask)(
@@ -185,7 +183,7 @@ class GlobalAttentionGeneral(Layer):
         target: batch x  ih x iw (queryL=ihxiw) x idf
         source: batch x sourceL(seq_len) x idf
         mask: batch x sourceL 
-            -inf or 0 が入っている
+            -inf or 0
         """
         target, source, mask = input_tensor
         idf = self.output_dim
@@ -213,7 +211,7 @@ class GlobalAttentionGeneral(Layer):
         # --> batch x queryL x idf
         weightedContext = ktf.matmul(attn, source)
         weightedContext = K.reshape(weightedContext, (-1, ih, iw, idf))
-        attn = K.reshape(attn, (-1, ih, iw, sourceL))  #計算ではこの後未使用
+        attn = K.reshape(attn, (-1, ih, iw, sourceL))
         return [weightedContext, attn]
 
     def compute_output_shape(self, input_shape):
@@ -242,9 +240,7 @@ def canet_function(input_tensor):
 
 def INIT_STAGE_G(c_code, ngf):
     """
-    :param z_code: batch x cfg.GAN.Z_DIM
     :param c_code: batch x cfg.TEXT.EMBEDDING_DIM
-    :return: batch x  64 x 64 x ngf/16
     """
     z_dim = cfg.GAN.Z_DIM
 
@@ -264,19 +260,14 @@ def INIT_STAGE_G(c_code, ngf):
     out_code32 = upBlock(ngf // 8)(out_code)
     # state size  64 x 64 x ngf/16
     out_code64 = upBlock(ngf // 16)(out_code32)
-    #init_G_model = Model([z_code_input, c_code_input], out_code64, name="init_G")
     return out_code64, z_code_input
 
 
 def NEXT_STAGE_G(h_code, word_emb, c_code, mask_input, ngf):
     """
-    h_code1(query):  batch x idf x ih x iw (queryL=ihxiw)
-    word_embs(context): batch x cdf x sourceL (sourceL=seq_len)
-    cm_code1,cs_code1: batch x idf x queryL
-    att1: batch x sourceL x queryL
+    h_code(query):  batch x ih x iw (queryL=ihxiw) x idf
+    word_embs(context): batch x sourceL (sourceL=seq_len) x cdf
     """
-    #c_dim
-
     c_code_unsq = Reshape((1, -1))(c_code)
     cm_code, attm = ATT_NET(h_code, word_emb, mask_input, use_mask=True)
     cs_code, atts = ATT_NET(h_code, c_code_unsq, mask_input, use_mask=False)
@@ -328,8 +319,8 @@ def Block3x3_leakRelu(out_planes):
     return block
 
 
-# Downsale the spatial size by a factor of 2
 def downBlock(out_planes):
+    # Downsale the spatial size by a factor of 2
     block = Sequential([
         ZeroPadding2D(padding=1),
         Conv2D(out_planes, kernel_size=4, strides=2, use_bias=False),
@@ -339,8 +330,8 @@ def downBlock(out_planes):
     return block
 
 
-# Downsale the spatial size by a factor of 16
 def encode_image_by_16times(ndf):
+    # Downsale the spatial size by a factor of 16
     encode_img = Sequential([
         # --> state size. ndf x in_size/2 x in_size/2
         ZeroPadding2D(padding=1),
@@ -365,7 +356,6 @@ def encode_image_by_16times(ndf):
 
 
 def D_GET_LOGITS(ndf, nef, h_code, sent_emb):
-
     # conditioning output
     s_code = Reshape((1, 1, -1))(sent_emb)
     #s_code = Lambda(lambda x: x.repeat(1, 4, 4, 1))(s_code)
@@ -395,7 +385,7 @@ def D_NET64(sent_emb):
     return h_logits, h_c_logits, D_pic_input
 
 
-# For 128 x 128 images# For 128 x 128 images
+# For 128 x 128 images
 def D_NET128(sent_emb):
     ndf = cfg.GAN.DF_DIM
     nef = cfg.TEXT.EMBEDDING_DIM

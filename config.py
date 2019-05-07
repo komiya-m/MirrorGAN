@@ -25,20 +25,20 @@ __C.TRAIN = edict()
 __C.TRAIN.BATCH_SIZE = 20
 __C.TRAIN.MAX_EPOCH = 1
 __C.TRAIN.FLAG = True
-#loadするモデルのpath（重みのみ）
+#load model path（weight onry）
 __C.TRAIN.NET_D = ''
 __C.TRAIN.INIT_NET_G = ''
 __C.TRAIN.NEXT128_NET_G = ''
 __C.TRAIN.NEXT256_NET_G = ''
 __C.TRAIN.RNN_DEC = 'model/cnn_rnn_encoder02_2.h5'
 
-__C.TRAIN.D_LR = 0.0001 #Dのラーニングレート
-__C.TRAIN.D_BETA1 = 0.5 #ADAM, beta1
-__C.TRAIN.G_LR = 0.0004 #Gのラーニングレート
-__C.TRAIN.G_BETA1 = 0.5 #ADAM, beta1
-__C.TRAIN.RNN_DEC_LOSS_W = 0.1  #デコーダーRNNのloss_weight
+__C.TRAIN.D_LR = 0.0001  #D learning rate
+__C.TRAIN.D_BETA1 = 0.5  #ADAM, beta1
+__C.TRAIN.G_LR = 0.0004  #G learning rate
+__C.TRAIN.G_BETA1 = 0.5  #ADAM, beta1
+__C.TRAIN.RNN_DEC_LOSS_W = 0.1  #decoder_RNN loss_weight
 
-__C.TRAIN.DEC_LR = 0.001  #pretrainのデコーダーRNNのラーニングレート
+__C.TRAIN.DEC_LR = 0.001  #pretrain decoder_RNN earning rate
 __C.TRAIN.DEC_SAVE_PATH = 'model/cnn_rnn_encoder.h5'
 __C.TRAIN.DEC_MAX_EPOCH = 10
 
@@ -56,10 +56,8 @@ __C.GAN.B_DCGAN = False
 __C.TEXT = edict()
 __C.TEXT.CAPTIONS_PER_IMAGE = 10
 __C.TEXT.EMBEDDING_DIM = 256
-####追加
 __C.TEXT.EMBEDDING_DIM_DEC = 512
 __C.TEXT.HIDDEN_DIM = 256
-####追加
 __C.TEXT.HIDDEN_DIM_DEC = 512
 __C.TEXT.WORDS_NUM = 18
 

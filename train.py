@@ -29,7 +29,7 @@ from tqdm import tqdm
 
 
 def main():
-    #DataGeneratorの準備
+    #DataGenerator
     imsize = cfg.TREE.BASE_SIZE * (2**(cfg.TREE.BRANCH_NUM - 1))  #64, 3
     image_transform = transforms.Compose([
         transforms.Resize(int(imsize * 76 / 64)),
@@ -46,11 +46,11 @@ def main():
 
     traingenerator = DataGenerator(dataset, batchsize=cfg.TRAIN.BATCH_SIZE)
 
-    #モデルの作成
+    ##Create model
     G_model, D_model, GRD_model, CR_model, RNN_model = model_create(dataset)
     print("loadmodel_completed")
 
-    #学習の準備
+    #Preparation for learning
     total_epoch = cfg.TRAIN.MAX_EPOCH
     batch_size = traingenerator.batchsize
     step_epoch = int(len(dataset) / batch_size)
@@ -61,7 +61,7 @@ def main():
         z_code, eps_code, mask, keys_list, captions_label, \
             real_label, fake_label = next(traingenerator)
     traingenerator.count = 0
-    #imageプロット用
+    #for image plot
     test_noise = deepcopy(z_code[:20])
     test_eps = deepcopy(eps_code[:20])
     test_cap_pd = deepcopy(captions_ar_prezeropad[:20])
@@ -69,7 +69,7 @@ def main():
     test_mask = deepcopy(mask[:20])
     test_mask = np.where(test_mask == 1, -float("inf"), 0)
 
-    #学習の開始
+    #Start learning
     print("batch_size: {}  step_epoch : {} srong_step_epoch {}".format(
         batch_size, step_epoch, wrong_step_epoch))
 
@@ -98,7 +98,7 @@ def main():
                 real_image = image_list[1]
             if cfg.TREE.BRANCH_NUM == 3:
                 real_image = image_list[2]
-            #Dの学習
+            #D learning
             if cfg.TREE.BRANCH_NUM == 1:
                 fake_image = G_model.predict(
                     [captions_ar_prezeropad, eps_code, z_code])
@@ -129,7 +129,7 @@ def main():
                 total_D_wrong_loss += histDw[0]
                 total_D_wrong_acc += (histDw[3] + histDw[4]) / 2
 
-            #Gの学習
+            #G learning
             if cfg.TREE.BRANCH_NUM == 1:
                 histGRD = GRD_model.train_on_batch(
                     [captions_ar_prezeropad, eps_code, z_code, captions_ar],
@@ -144,7 +144,7 @@ def main():
             total_G_des_loss += (histGRD[1] + histGRD[2]) / 2
             total_G_enc_loss += histGRD[3]
 
-        #lossの算出
+        #Calculation of loss
         D_loss = total_D_loss / step_epoch / 2
         D_acc = total_D_acc / step_epoch / 2
         D_wrong_loss = total_D_wrong_loss / wrong_step_epoch
@@ -166,7 +166,7 @@ def main():
             D_save_path = "model/D_epoch{}.h5".format(epoch)
             D_model.save_weights(D_save_path)
 
-        #画像の保存
+        #Save image
         if epoch % 1 == 0:
             sample_images(epoch, test_noise, test_eps, test_cap_pd, test_mask, G_model)
 

@@ -24,10 +24,10 @@ from copy import deepcopy
 from keras.preprocessing.image import load_img
 from keras import callbacks
 
-#########注意点　config.TREE.BRANCH_NUM = 3 で実行すること########
+#########Run at　config.TREE.BRANCH_NUM = 3 ########
 
 def main():
-    #DataGeneratorの準備
+    #DataGenerator
     imsize = cfg.TREE.BASE_SIZE * (2**(cfg.TREE.BRANCH_NUM - 1))  #64, 3
     image_transform = transforms.Compose([
         transforms.Resize(int(imsize * 76 / 64)),
@@ -55,7 +55,7 @@ def main():
     val_generator = DataGenerator_encode(
         dataset_val, batchsize=cfg.TRAIN.BATCH_SIZE)
 
-    #モデルの作成
+    #Create model
     CR_model = model_create_pretrain(dataset)
     print(CR_model.summary())
 

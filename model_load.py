@@ -21,8 +21,7 @@ from model import *
 
 
 def model_create(dataset):
-    #モデル作成して返す関数
-
+    #Function to create model and return
     emb_size, hidden_size  = cfg.TEXT.EMBEDDING_DIM, cfg.TEXT.HIDDEN_DIM // 2
     emb_size_dec, hidden_size_dec = cfg.TEXT.EMBEDDING_DIM_DEC, cfg.TEXT.HIDDEN_DIM_DEC
     vocab_size = dataset.n_words
@@ -46,15 +45,15 @@ def model_create(dataset):
         D_h_logits, D_hc_logits, D_pic_input = D_NET128(sent_emb)
     if cfg.TREE.BRANCH_NUM == 3:
         D_h_logits, D_hc_logits, D_pic_input = D_NET256(sent_emb)
-    #Dの学習用
+    #For learning D
     D_model = Model([D_pic_input, cap_input],
                     [D_h_logits, D_hc_logits],
                     name="Discriminator")
-    #Dの重みロード
+    #D weight load
     if not cfg.TRAIN.NET_D == "":
         D_model.load_weights(cfg.TRAIN.NET_D)
 
-    #G (Dの学習用のアウトプットに利用)
+    #G (for D learning output)
     if cfg.TREE.BRANCH_NUM > 0:
         init_G_model = Model([cap_input, eps_input, z_code_input],
                              netGs_out[0],
@@ -80,7 +79,7 @@ def model_create(dataset):
         G_output = next_G_model256.output
         if not cfg.TRAIN.NEXT256_NET_G == "":
             next_G_model256.load_weights(cfg.TRAIN.NEXT256_NET_G, by_name=True)
-    #出力層との結合 and 重みのロード
+    #Coupling with output layer and weight load
     out_img = out_image_block(G_output)
     if cfg.TREE.BRANCH_NUM == 1:
         G_model = Model(init_G_model.get_input_at(0), out_img, name="Generator")
@@ -94,7 +93,7 @@ def model_create(dataset):
         if (not cfg.TRAIN.NEXT256_NET_G == "") and (cfg.TREE.BRANCH_NUM == 3):
             G_model.load_weights(cfg.TRAIN.NEXT256_NET_G)
 
-    #GRD (Gの学習用)
+    #GRD (For learning G)
     DG_h_logits, DG_hc_logits = D_model([out_img, sent_emb])
     cr_cap_input = CR_model.get_input_at(0)[1]
     cr_logith = CR_model([out_img, cr_cap_input])  #pic_input #cap_input
@@ -103,7 +102,7 @@ def model_create(dataset):
         [DG_h_logits, DG_hc_logits, cr_logith],
         name="GRD_model")
 
-    #コンパイル
+    #compile
     D_model.compile(
         loss='binary_crossentropy',
         loss_weights=[0.5, 0.5],
@@ -127,7 +126,8 @@ def model_create(dataset):
 
 
 def model_create_pretrain(dataset):
-    #モデル作成して返す関数
+    #Function to create model and return
+    #DECODER for learning
 
     emb_size, hidden_size = cfg.TEXT.EMBEDDING_DIM, cfg.TEXT.HIDDEN_DIM // 2
     emb_size_dec, hidden_size_dec = cfg.TEXT.EMBEDDING_DIM_DEC, cfg.TEXT.HIDDEN_DIM_DEC
