@@ -58,7 +58,7 @@ class DataGenerator(object):
         captions_ar = np.squeeze(captions_ar, axis=2).astype("f")
         captions_ar_prezeropad = captions_ar_prezeropad.astype("f")
         mask = (captions_ar == 0)
-        #ノイズ
+        #noise
         z_code = np.random.normal(0, 1,
                                   (self.batchsize, cfg.GAN.Z_DIM)).astype("f")
         eps_code = np.random.normal(
@@ -67,7 +67,7 @@ class DataGenerator(object):
         #gan_label
         real_label = np.ones((self.batchsize, 1), dtype="i4")
         fake_label = np.zeros((self.batchsize, 1), dtype="i4")
-        #ワンホット
+        #one hot
         captions_label = np.zeros(
             (y_captions_ar.shape[0], y_captions_ar.shape[1],
              self.n_words)).astype("i4")
@@ -121,7 +121,7 @@ class DataGenerator_encode(object):
         ],
                                        axis=1)
         captions_ar = np.squeeze(captions_ar, axis=2).astype("f")
-        #ワンホット
+
         y = np.zeros((y_captions_ar.shape[0], y_captions_ar.shape[1],
                       self.n_words)).astype("i4")
         for j in range(y_captions_ar.shape[0]):
